@@ -1,0 +1,189 @@
+```{r}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(readr)
+library(dplyr)
+library(readxl)
+library(DT)
+library(ggplot2)
+```
+I loaded the three main libraries: tidyverse, janitor and lubridate and several other I found necessary as the project continued.
+```{r}
+dispatches <- read_csv("LPD_Dispatch_Records.csv")
+```
+I imported the LPD dispatches information, so that I can clean and organize it. 
+```{r}
+dispatches2 <- dispatches %>% clean_names() 
+```                             
+I used janitor's clean_names function so that all of the headers were lowercased and with undescores in between the head words. 
+```{r}
+dispatches2 <- dispatches2 %>% mutate(date_fixed = ymd(rpt_date))
+```
+I used date_fixed with ymd function so that I could clean the dates into the correct structure.
+```{r}
+dispatches2 %>% stop_for_problems() 
+```
+I used this function so that all of the ones with NA were placed at the top. 13 rows failed to parse because they do not have date, case #, officer or any other type of information. 
+```{r}
+dispatches2 %>% group_by(case) %>% 
+  summarise(
+  count = n ()
+ ) %>% arrange(desc(count))
+```
+I used the group by, count and arrange in descending order to figure out how many cases there are and how many unique cases there are and how many are repeated. 
+There are 400,467 cases in total (this excludes the missing 13) and there are only 400,449 unique cases because they are not repeated #s. 
+```{r}
+dispatches2 %>% group_by(case, rpt_date) %>% 
+  summarise(
+  ) %>% arrange(desc("rpt_date"))
+```
+I used the group by, arrange, and descending order to figure out which ones are the oldest and most recent cases. 
+20170101 is the most recent and 20200606 is the oldest. I actually had to go into the actual data file to figure out the oldest because I wasn't sure how to use ascending (if a function exists).
+```{r}
+missing <- dispatches2 %>% filter(rpt_date == "0")
+```
+I created a new dataframe called "missing" and filtered it so that only the missing persons data was in that dataframe. I filtered it by the 0 date because these missing people's cases don't have dates. 
+```{r}
+dispatches2 %>% filter(
+  str_detect(block_address, "O ST")
+  )
+```
+I used str_detect to figure out all of the cases on O Street. 
+```{r}
+dispatches2 %>% group_by(neighbor) %>% 
+  summarise(
+  count = n ()
+ ) %>% arrange(desc(count))
+```
+I used the group by and count to figure out how many dispatches were sent to each separate neighborhood. Downtown is the neighborhood that has the most counts of dispatches; probably because it is where bars and businesses are located so it means more people are there. 
+An obvious limitation is that 133,001 calls are under NA, but I think narrowing the dispatch calls to a certain neighborhood would help more with calculating data. 
+```{r}
+dispatches2 <- dispatches2 %>% mutate(rpt_year = year(date_fixed))
+```
+Here I used the rpt_year and date_fixed to create a single column for the year. 
+```{r}
+dispatches2 <- dispatches2 %>% 
+  mutate(hour = case_when(
+    as.numeric(rpt_time) >= 0 & as.numeric(rpt_time) <= 59 ~ 0, 
+    as.numeric(rpt_time) >= 100 & as.numeric(rpt_time) <= 159 ~ 1,
+    as.numeric(rpt_time) >= 200 &
+as.numeric(rpt_time) <= 259 ~ 2, 
+    as.numeric(rpt_time) >= 300 & 
+as.numeric(rpt_time) <=359 ~ 3, 
+    as.numeric(rpt_time) >=400 &
+as.numeric(rpt_time) <= 459 ~ 4, 
+    as.numeric(rpt_time) >= 500 & 
+as.numeric(rpt_time) <=559 ~ 5, 
+    as.numeric(rpt_time) >=600 & 
+as.numeric(rpt_time) <=659 ~ 6, 
+    as.numeric(rpt_time) >=700 & 
+as.numeric(rpt_time) <= 759 ~ 7, 
+    as.numeric(rpt_time) >=800 & 
+as.numeric(rpt_time) <= 859 ~ 8, 
+    as.numeric(rpt_time) >= 900 & 
+as.numeric(rpt_time) <= 959 ~ 9, 
+    as.numeric(rpt_time) >= 1000 &
+as.numeric(rpt_time) <= 1059 ~ 10, 
+    as.numeric(rpt_time) >= 1100 & 
+as.numeric(rpt_time) <= 1159 ~ 11, 
+    as.numeric(rpt_time) >= 1200 & 
+as.numeric(rpt_time) <= 1259 ~ 12, 
+    as.numeric(rpt_time) >= 1300 & 
+as.numeric(rpt_time) <= 1359 ~ 13, 
+    as.numeric(rpt_time) >= 1400 & 
+as.numeric(rpt_time) <= 1459 ~ 14, 
+    as.numeric(rpt_time) >=1500 & 
+as.numeric(rpt_time) <= 1559 ~ 15, 
+    as.numeric(rpt_time) >= 1600 & 
+as.numeric(rpt_time) <= 1659 ~ 16, 
+    as.numeric(rpt_time) >= 1700 & 
+as.numeric(rpt_time) <= 1759 ~ 17, 
+    as.numeric(rpt_time) >= 1800 & 
+as.numeric(rpt_time) <= 1859 ~ 18, 
+    as.numeric(rpt_time) >= 1900 & 
+as.numeric(rpt_time) <= 1959 ~ 19, 
+    as.numeric(rpt_time) >= 2000 & 
+as.numeric(rpt_time) <= 2059 ~ 20, 
+    as.numeric(rpt_time) >= 2100 & 
+as.numeric(rpt_time) <= 2159 ~ 21, 
+    as.numeric(rpt_time) >= 2200 & 
+as.numeric(rpt_time) <= 2259 ~ 22, 
+    as.numeric(rpt_time) >= 2300 & 
+as.numeric(rpt_time) <= 2359 ~ 23))
+```
+I used as.numeric(rpt_time) to create a new column for 24-hour. 
+```{r}
+dispatches2 %>% group_by(hour) %>%
+  summarise(
+    count = n()
+  ) %>% arrange(desc(count))
+```
+Hour 16:00 gets the most police action. I used group_by and arrange to see which hour had the most calls.  
+```{r}
+dispatches2 %>% group_by(rpt_year) %>% 
+  summarise(
+    total = n()
+ ) %>% arrange("drugs")
+```
+I used group_by to account all of the years and arranged them by drug calls. 
+```{r}
+dispatches2 <- dispatches2 %>% mutate(rpt_month= month(date_fixed))
+```
+I used rpt_month and date_fixed to create a new column called month. 
+```{r}
+dispatches2 %>% 
+  group_by(rpt_month, rpt_year) %>% 
+  summarise(
+    per_month = n()
+  )  %>% ungroup() %>% 
+  summarise(min(per_month), max(per_month), mean(per_month))
+```
+I will not deny that I followed Will's procedure for this problem because I was unsure how to solve it. This is my first time using ungroup, so I'm learning something new. Without ungroup I was struggling to come up with an answer, but once I used ungroup..then it all came together. So, thank you Will :) 
+
+
+```{r}
+years_total <- dispatches2 %>% group_by (rpt_year) %>% 
+  summarise(
+    total = n()
+  )
+```
+I created a new dataframe named years_total so that all of the dispatches' calls were totaled by their years. 
+
+
+```{r}
+years_total %>% mutate(
+  change = ((2019 - 2018)/2018)*100)
+```
+Then I used that new dataframe to use percent change equation. 
+
+```{r}
+dispatches2 %>% group_by(date_fixed) %>% summarize(total=n()) %>% ggplot() + geom_line(aes(x=date_fixed, y=total, color="#00AFBB")) +
+  labs(x="Dates", y="LPD Dispatch Calls", title= "Lincoln Police Department Dispatches") + 
+  theme_minimal() + theme(
+    plot.title = element_text(size = 10, face = "bold"),
+    axis.title = element_text(size = 8))
+```
+I created a line graph using the dates of all three years to see how the calls have varied. I see that the calls increase toward the warmer months, so one can assume that more people are outside when its nice out and that may mean more people are causing problems or are more likely to cause issues.
+```{r}
+dispatches2 %>%
+  group_by(cfs_legend) %>%
+  summarise(
+    total = n()
+  ) %>% top_n(5, total) -> topcalls
+```
+I created a dataframe called topcalls with the top 5 calls from the cfs_legend. This will make it easier for me to create a ggplot. 
+```{r}
+dispatches2 %>% 
+  ggplot() +
+  geom_bar(data = topcalls,
+aes(x=reorder(cfs_legend, total), weight=total, col=rainbow(5))) + 
+  scale_y_continuous() + 
+  labs(x="", y="", title="LPD's Five Common Dispatch Calls") + 
+  coord_flip() + 
+  theme_minimal() + theme(
+    plot.title = element_text(size = 10, face = "bold"),
+    axis.title = element_text(size = 1), 
+    plot.subtitle = element_text(size=8))
+```
+I created a column chart using the information about the top 5 dispatch calls. I added some colors, so that it can look a bit colorful and fun. 
